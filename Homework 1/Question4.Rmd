@@ -1,0 +1,153 @@
+---
+title: "Question 4"
+author: "Bejan Sadeghian"
+date: "August 7, 2015"
+output: html_document
+---
+
+###Question 4 of Homework 1
+
+####Objective
+To evaluate the users on Twitter that follow the company NutrientH2O and their last 1000 tweets to develop a suggestion to the marketing team on what their users enjoy most and what they should incorporate in their advertisements to draw attention from their interest groups.
+
+####Conclusion
+My message to the marketing team would be the follows. Cluster 10, 14, and 15 are their largest groups of consumers to target so they should focus their efforts there initially.
+ 
+ - Cluster 10 individuals are the type of person who enjoys keeping up with current events, dating, and home and garden. They dont enjoy religion, researching about schooling, food, sports, or photo sharing necessarily. Because they dont have an interest in schooling research or religion and they are interested in dating and current events I would make the assumption that these people are younger people probablly in their mid 20s. Not necessarily the "hipster genre" but something of a more well rounded person who is starting their life.
+ 
+ - Cluster 14 individuals are the type of person who has interests in business, eco-friendly ideas, current events, talking, shopping, and photo sharing. What they dont enjoy are things like religion, outdoors, beauty, news, cooking, or food. I would characterize this user group as older, maybe in the 30s, who have careers and read about business/economics, they shop and talk alot on online which indicates they are online to discuss ideas as opposed to blurting information. With beauty being a lower interest item, this tells me they are older as well because they may already have a significant other and while they dont completely ignore beauty, they probably already have established methods and dont need to have that on their mind.
+ 
+ - Cluster 15 individuals enjoy outdoors, eco-friendly ideas, food, cooking, personal fitness, and health nutrition. What they dont necessarily enjoy discussing is politics, automotives, sports fanatacism, school, beauty, or university. I would assess this person as being a younger individual probablly out of college. They are definetly an outdoors person given they include outdoors and 'eco'. They are probablly a bit of a health nut (hence the fitness, nutrition, and cooking). 
+ 
+ - The three top clusters of individuals all seem to be in the millennial category. Thats very telling about NutrientH2O's key demograph. 
+    
+    - If NutrientH2O wanted to branch out further they could take a look at the fourth largest cluster (cluster 5) of individuals.
+    
+    - These individuals are very different from the top three in that they are highly interested in school, family, parenting, and religion. They are interested in food and sports as well. What they are least interested in are cooking, health nutrition, personal fitness, news, photo sharing, and politics. This type of individual is definetly a parent or soon to be parent. Likely already an established family. If NutrientH2O wanted to expand their customer base they could focus on the family aspect when marketing to include this group. If we had just looked at the top three groups we would not have thought family would be of interest but for this group they are.
+
+
+####Method
+
+Step 1) I imported the ggplot2, reshape, and foreach libraries and the social_marketing.csv file
+```
+library(ggplot2)
+library(reshape)
+library(foreach)
+
+rawdata = read.csv('social_marketing.csv')
+```
+
+Step 2) I then removed the first column (userIDs) and scaled the data in preparation for K-Means clustering
+```
+moddata = rawdata[,-1]
+
+datascaled = scale(moddata, center=TRUE, scale=TRUE)
+```
+
+Step 3) For K-Means I ran an optimization of the K value with nstart=10 to find the best number of centroids to run Kmeans with. You can see that information below.
+'''
+K = 40
+#Try K-means
+ErrorArray = rep(0,K)
+for(i in 1:K){
+  dataCluster = kmeans(datascaled,centers = i, nstart = 10)# method = 'kmeans', dist='euclidean', save.data=TRUE)
+  ErrorArray[i] = dataCluster$tot.withinss
+}
+plot(ErrorArray)
+'''
+
+Step 4) After finding the optimized K value (15 in this case), I performed the K-Means by the R function kmeans()
+```
+#Perform K-Means with the optimized K value
+K=15
+dataCluster = kmeans(datascaled,centers = K, nstart = 10)
+```
+
+Step 5) To find what characterizes each cluster of user, I wanted to see the centers for each cluster for each variable, I had to do some cleaning of the data and renaming the variables to be able to utilize it in plotting, you can see that below.
+```
+Centers = dataCluster$centers
+transposeCenters = t(Centers)
+transposeCenters = as.data.frame(transposeCenters)
+transposeCenters = cbind(transposeCenters,rownames(transposeCenters))
+colnames(transposeCenters) = c('one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','item')
+meltCenters = melt(transposeCenters,id=c('item'))
+```
+
+Step 6) I then plot this information in a bar chart. With 15 clusters you can see that doing any analysis will be very difficult just looking at the graph so I need to take it a step further.
+```
+ggplot(meltCenters, aes(x=item, fill=variable, y=value)) + geom_bar(position="dodge", stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Step 7) I then took the top interest and lowest interest (based on cluster centers). I also added the count of each cluster so I could make an informed decision on what I was looking at. My evaluation and marketing recommendation for nutrientH2O is in the conclusions above.
+```
+LowInterest = foreach(i = 1:(length(transposeCenters)-1),.combine=cbind, .inorder=TRUE) %do% {
+  head(rownames((transposeCenters[with(transposeCenters, order(transposeCenters[,i])), ])))
+}
+LowInterest = rbind(LowInterest,t(as.matrix(dataCluster$size)))
+
+HighInterest = foreach(i = 1:(length(transposeCenters)-1),.combine=cbind, .inorder=TRUE) %do% {
+  tail(rownames((transposeCenters[with(transposeCenters, order(transposeCenters[,i])), ])))
+}
+HighInterest = rbind(HighInterest,t(as.matrix(dataCluster$size)))
+
+print('Higher Interest Items for each Cluster')
+print(HighInterest)
+print('Lower Interest Items for each Cluster')
+print(LowInterest)
+```
+
+
+```{R plot, fig.width = 5, fig.height = 4, message=FALSE}
+library(ggplot2)
+library(reshape)
+library(foreach)
+
+set.seed(1)
+rawdata = read.csv('social_marketing.csv')
+
+moddata = rawdata[,-1]
+
+datascaled = scale(moddata, center=TRUE, scale=TRUE)
+
+K = 40
+#Try K-means
+ErrorArray = rep(0,K)
+for(i in 1:K){
+  dataCluster = kmeans(datascaled,centers = i, nstart = 10)# method = 'kmeans', dist='euclidean', save.data=TRUE)
+  ErrorArray[i] = dataCluster$tot.withinss
+}
+plot(ErrorArray)
+
+
+#Perform K-Means with the optimized K value
+K=15
+dataCluster = kmeans(datascaled,centers = K, nstart = 10)
+
+Centers = dataCluster$centers
+transposeCenters = t(Centers)
+transposeCenters = as.data.frame(transposeCenters)
+transposeCenters = cbind(transposeCenters,rownames(transposeCenters))
+colnames(transposeCenters) = c('one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','item')
+meltCenters = melt(transposeCenters,id=c('item'))
+
+ggplot(meltCenters, aes(x=item, fill=variable, y=value)) + geom_bar(position="dodge", stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+LowInterest = foreach(i = 1:(length(transposeCenters)-1),.combine=cbind, .inorder=TRUE) %do% {
+  head(rownames((transposeCenters[with(transposeCenters, order(transposeCenters[,i])), ])))
+}
+LowInterest = rbind(LowInterest,t(as.matrix(dataCluster$size)))
+
+HighInterest = foreach(i = 1:(length(transposeCenters)-1),.combine=cbind, .inorder=TRUE) %do% {
+  tail(rownames((transposeCenters[with(transposeCenters, order(transposeCenters[,i])), ])))
+}
+HighInterest = rbind(HighInterest,t(as.matrix(dataCluster$size)))
+
+print('Higher Interest Items for each Cluster')
+print(HighInterest)
+print('Lower Interest Items for each Cluster')
+print(LowInterest)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
