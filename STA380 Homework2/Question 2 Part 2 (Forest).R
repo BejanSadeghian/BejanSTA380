@@ -147,3 +147,18 @@ for(index in seq(1:length(file_list))){
 #---------------------------
 Accuracy.Score = sum(df.final[[5]])/length(df.final[[5]])
 print(Accuracy.Score)
+
+#---------------------------
+#Cross Tabulation
+#---------------------------
+crosstabulate = xtabs(~Actual + Predict, data=df.final)
+cross.df = as.data.frame.matrix(crosstabulate)
+rownames = rownames(crosstabulate)
+colnames = rownames(crosstabulate)
+for(i in seq(1,50)){
+  if(colnames[[i]] != rownames[which(cross.df[[i]]==max(cross.df[[i]]))]){
+    print(paste0(rownames[which(cross.df[[i]]==max(cross.df[[i]]))],' is commonly mistaken for ',colnames[[i]]))
+  }
+}
+
+

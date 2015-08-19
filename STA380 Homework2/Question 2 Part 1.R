@@ -73,17 +73,19 @@ for(i in authors_list){
 #Compare against test set
 
 author_dirs = Sys.glob('../STA380 Homework2/ReutersC50/C50test/*')
-author_dirs = author_dirs[1:length(author_dirs)]
 file_list = NULL
 labels = NULL
-
+author_list = NULL
 files_to_add = NULL
 
 for(i in author_dirs){
-  author = author_dirs[1]
+  author = i
   author_name = substring(author, first=40)
   files_to_add = Sys.glob(paste0(author, '/*.txt'))
   file_list = append(file_list, files_to_add)
+  for(ix in seq(1,50)){
+    author_list = append(author_list, author_name)
+  }
   labels = append(labels, rep(author_name, length(files_to_add)))
   names_of_files = str_sub(files_to_add, -16)
 }
@@ -127,6 +129,7 @@ X_eval = as.matrix(X_eval)
 #Calculating probabilties and making a prediction
 
 df = data.frame(Document=rep(0,2500), Predict=rep(0,2500), Weight=rep(0,2500), Actual=rep(0,2500), Match=rep(0,2500))
+df[,4] = author_list
 count = 1
 index = 1
 for(doc in file_list){
@@ -141,7 +144,6 @@ for(doc in file_list){
   df[index,1] = str_sub(doc,-15)
   df[index,2] = current_person #Best Prediction
   df[index,3] = current_best
-  df[index,4] = ifelse(str_sub(substring(substring(doc, first=40), first=1, last=(nchar(substring(doc, first=40))-16)),-1) == '/', substring(substring(doc, first=40), first=1, last=(nchar(substring(doc, first=40))-17)),substring(substring(doc, first=40), first=1, last=(nchar(substring(doc, first=40))-16)))
   df[index,5] = ifelse(df[index,4] == df[index,2], 1, 0)
   count = count + 1
   index = index + 1
@@ -150,4 +152,15 @@ for(doc in file_list){
 
 #Calculate Accuracy
 Accuracy.Score = sum(df[[5]])/length(df[[5]])
+print(Accuracy.Score)
 
+#Look at the tabulation and print which authors are very often mixed with another author.
+crosstabulate = xtabs(~Actual + Predict, data=df)
+cross.df = as.data.frame.matrix(crosstabulate)
+rownames = rownames(crosstabulate)
+colnames = rownames(crosstabulate)
+for(i in seq(1,50)){
+  if(colnames[[i]] != rownames[which(cross.df[[i]]==max(cross.df[[i]]))]){
+    print(paste0(colnames[[i]],' is commonly mistaken for ',rownames[which(cross.df[[i]]==max(cross.df[[i]]))]))
+  }
+}

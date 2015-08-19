@@ -77,7 +77,12 @@ img {
 <p>For the second method, I used random forest. The reason I chose random forest was because in our train and test dataset (the corpus DTM) we have 50 observations per author and depending on the sparse data removal amount chosen upwards of 1000s of variables (words). This of course poses a problem for us because we have more predictors than observations. I felt random forest would be among the best solutions (PCA would be another) since it allows for us to iterate through with different variables each time we make a tree so we could have a situation where we have more observations than variables.</p>
 <p>Again my main metric for optimization was prediction accuracy (named ‘Accuracy.Score’ in my code). For the random forest mtry I first decided on a ntree value then ran the code multiple times with different mtrys to find the best accuracy score. That turned out to me 3 for me. For the random forest ntree parameter I ran a CV to find where MSE was lowest quickest. I landed on ntree = 100 because the curve for MSE mostly remained the same from ntree = 100 up to 3000, so for the sake of computation expense I went with the minimum value here.</p>
 <p>Something I did that was unique to the dataset here as opposed to the Naive Bayes method is I trained my Random Forest model with a matrix where items used less than 5% of the time were removed then used everything in the test set except the words used 1% of the time. I of course still did the intersection because that is required for the model to not be presented with new variables when predicting.</p>
-<p>I ended up getting around 50% prediction accuracy with random forest here. It was not quite as good as I would have hoped for given Naive Bayes came out with 74% but it was respectable. I tried using LASSO and logistic regression however those prediction accuracies came to below 10%; however, Im sure had I spent more time with those methods I could have improved the scores. This was an iterative learning process for me with Random Forest being the last model I tried.</p>
+<p>I ended up getting around 50% prediction accuracy with random forest here. It was not quite as good as I would have hoped for given Naive Bayes came out with 62% but it was respectable. I tried using LASSO and logistic regression however those prediction accuracies came to below 10%; however, Im sure had I spent more time with those methods I could have improved the scores. This was an iterative learning process for me with Random Forest being the last model I tried.</p>
+<p>Finally, I tabulated all of the predictions and compared them against the actual authors and found which authors were most commonly mixed up with a differen author. These authors are different from the Naive Bayes set of authors primarily because of the differing models (though there are quite a few authors showing up on both methods’ lists). Todd Nissen, Jonathan Brit, Carren Schuettler, Benjamin Kang Lim, Alexander Smith, Jane Macartney, and David Lawder. Also, be aware that Heather Scoffield and Todd Nissen are both listed twice, it is because the number of their predictions that were correct was the same as a incorrect prediction for one of their documents. I kept them listed here because they are still considered a commonly mistaken author to me.</p>
+</div>
+<div id="notes" class="section level3">
+<h3>Notes</h3>
+<p>I made similar notes in my Naive Bayes file for question two, please be aware there are two markdown files for question two, I did not want to combine the two methods into one markdown file because it would be a lot of knitting time with a lot of room for error. Again, I prefer the Naive Bayes method because it has around a better prediction accuracy by around 10%.</p>
 <pre class="r"><code>library(tm)</code></pre>
 <pre><code>## Loading required package: NLP</code></pre>
 <pre class="r"><code>library(stringr)
@@ -250,6 +255,27 @@ for(index in seq(1:length(file_list))){
 Accuracy.Score = sum(df.final[[5]])/length(df.final[[5]])
 print(Accuracy.Score)</code></pre>
 <pre><code>## [1] 0.5004</code></pre>
+<pre class="r"><code>#---------------------------
+#Cross Tabulation
+#---------------------------
+crosstabulate = xtabs(~Actual + Predict, data=df.final)
+cross.df = as.data.frame.matrix(crosstabulate)
+rownames = rownames(crosstabulate)
+colnames = rownames(crosstabulate)
+for(i in seq(1,50)){
+  if(colnames[[i]] != rownames[which(cross.df[[i]]==max(cross.df[[i]]))]){
+    print(paste0(rownames[which(cross.df[[i]]==max(cross.df[[i]]))],' is commonly mistaken for ',colnames[[i]]))
+  }
+}</code></pre>
+<pre><code>## [1] &quot;ToddNissen is commonly mistaken for DavidLawder&quot;
+## [1] &quot;JonathanBirt is commonly mistaken for EdnaFernandes&quot;
+## [1] &quot;DarrenSchuettler is commonly mistaken for HeatherScoffield&quot;
+## [2] &quot;HeatherScoffield is commonly mistaken for HeatherScoffield&quot;
+## [1] &quot;BenjaminKangLim is commonly mistaken for JaneMacartney&quot;
+## [1] &quot;AlexanderSmith is commonly mistaken for JoeOrtiz&quot;
+## [1] &quot;JaneMacartney is commonly mistaken for ScottHillis&quot;
+## [1] &quot;DavidLawder is commonly mistaken for ToddNissen&quot;
+## [2] &quot;ToddNissen is commonly mistaken for ToddNissen&quot;</code></pre>
 </div>
 
 

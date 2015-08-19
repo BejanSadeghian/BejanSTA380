@@ -76,9 +76,14 @@ img {
 <h3>My Method</h3>
 <p>For the first model, I decided to use Naive Bayes. In order to import the data I followed along closely to the provided script to collect the authors and their file paths. I did make adjustments to fit my model’s needs as necessary. Like the provided code, I replaced whitespaces, removed punctuations and numbers, and lower cased everything similar to what was done in class. I tried using stemming as well but it resulted in a lower accuracy when predicting.</p>
 <p>My optimization metric was to improve out of bag prediction accuracy as best as possible so that was the basis for each decision I made. The decisions I made were to use TFIDF as opposed to raw counts, not using normalization on the TFIDF values, and remove sparse terms used less than 1% of the time (the more data I could use the better prediction I typically got, but using 100% of the data made the script very slow).</p>
-<p>To deal with words that showed up in the test set that were not in the training set what I did was intersect the two matrices and added whatever words that were missing from the intersection, that was in the train set. I counted those as zeros since they did not appear once in the test set. What this essentially did was drop any words that were not in the training set so I could use my previous data set to predict on the test set. The limitation to this is that if the author started using unique words in the test set that were not in the training set I would not catch that. From my reading online this is a recommended method but Im sure there are better methods.</p>
+<p>To deal with words that showed up in the test set that were not in the training set what I did was intersect the two matrices and added whatever words that were missing from the intersection, that was in the train set. I counted those as zeros since they did not appear once in the test set. What this essentially did was drop any words that were not in the training set so I could use my previous data set to predict on the test set. The limitation to this is that if the author started using unique words in the test set that were not in the training set I would not catch that. From my reading online this is a common method but Im sure there are better methods.</p>
 <p>Finally I cycled through each smooth factor for each author and multiplied it’s log to the vector of each test observation. Whichever author’s score produced the largest weight was the one I had my code flag as the author which saved into a dataframe for summary.</p>
-<p>The correct prediction percentage I was able to achieve was around 74% which I was proud of. Initially I was getting somewhere on the order of 20-30% but what had gotten me was, even though Naive Bayes does not use order for its calculation of the score factor, because my test set’s columns were not ordered similar to the train set it was giving me a poor prediction. (Since my score factor for each author is a vector where it set the values according to the order of the train set’s columns). Basically a mismatch when multiplying the weight for each test observation to the score factor vector parameters. When I ordered them it jumped up to around 50%, the optimizations I mentioned earlier got me to ~74%.</p>
+<p>The correct prediction percentage I was able to achieve was around 62% which I was proud of. Initially I was getting somewhere on the order of 20-30% but what had gotten me was, even though Naive Bayes does not use order for its calculation of the score factor, because my test set’s columns were not ordered similar to the train set it was giving me a poor prediction. (Since my score factor for each author is a vector where it set the values according to the order of the train set’s columns). Basically a mismatch when multiplying the weight for each test observation to the score factor vector parameters. When I ordered them it jumped up to around 50%, the optimizations I mentioned earlier got me to ~62%.</p>
+<p>At the very bottom you can see that there are six authors that are commonly mistaken for other authors… David Lawder, Jane Macarthy, Scott Hillis, Darren Schuettler, Peter Humphrey, and Todd Nissen.</p>
+</div>
+<div id="notes" class="section level3">
+<h3>Notes</h3>
+<p>Please be aware that my second method for Question 2 is a seperate R and markdown file. Of the two methods I prefer Naive Bayes because the accuracy for prediction is 10% higher (60% for Naive Bayes vs 50% for Random Forest).</p>
 <pre class="r"><code>library(tm)</code></pre>
 <pre><code>## Loading required package: NLP</code></pre>
 <pre class="r"><code>library(stringr)
@@ -164,17 +169,19 @@ for(i in authors_list){
 #Compare against test set
 
 author_dirs = Sys.glob('../STA380 Homework2/ReutersC50/C50test/*')
-author_dirs = author_dirs[1:length(author_dirs)]
 file_list = NULL
 labels = NULL
-
+author_list = NULL
 files_to_add = NULL
 
 for(i in author_dirs){
-  author = author_dirs[1]
+  author = i
   author_name = substring(author, first=40)
   files_to_add = Sys.glob(paste0(author, '/*.txt'))
   file_list = append(file_list, files_to_add)
+  for(ix in seq(1,50)){
+    author_list = append(author_list, author_name)
+  }
   labels = append(labels, rep(author_name, length(files_to_add)))
   names_of_files = str_sub(files_to_add, -16)
 }
@@ -199,17 +206,17 @@ my_corpus = tm_map(my_corpus, stemDocument)
 #Creating the DTM and a list of all of the terms used
 DTM = DocumentTermMatrix(my_corpus, control= list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
 DTM</code></pre>
-<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 2500, terms: 2138)&gt;&gt;
-## Non-/sparse entries: 395650/4949350
-## Sparsity           : 93%
-## Maximal term length: 21
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 2500, terms: 22088)&gt;&gt;
+## Non-/sparse entries: 394051/54825949
+## Sparsity           : 99%
+## Maximal term length: 45
 ## Weighting          : term frequency - inverse document frequency (tf-idf)</code></pre>
 <pre class="r"><code>DTM = removeSparseTerms(DTM, 0.99) #Removing anything uses less than 1% of the time
 DTM</code></pre>
-<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 2500, terms: 2138)&gt;&gt;
-## Non-/sparse entries: 395650/4949350
-## Sparsity           : 93%
-## Maximal term length: 21
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 2500, terms: 2455)&gt;&gt;
+## Non-/sparse entries: 320256/5817244
+## Sparsity           : 95%
+## Maximal term length: 15
 ## Weighting          : term frequency - inverse document frequency (tf-idf)</code></pre>
 <pre class="r"><code>ListofTestTerms = DTM$dimnames
 ListofTestTerms = ListofTestTerms$Terms
@@ -227,6 +234,7 @@ X_eval = as.matrix(X_eval)
 #Calculating probabilties and making a prediction
 
 df = data.frame(Document=rep(0,2500), Predict=rep(0,2500), Weight=rep(0,2500), Actual=rep(0,2500), Match=rep(0,2500))
+df[,4] = author_list
 count = 1
 index = 1
 for(doc in file_list){
@@ -241,7 +249,6 @@ for(doc in file_list){
   df[index,1] = str_sub(doc,-15)
   df[index,2] = current_person #Best Prediction
   df[index,3] = current_best
-  df[index,4] = ifelse(str_sub(substring(substring(doc, first=40), first=1, last=(nchar(substring(doc, first=40))-16)),-1) == '/', substring(substring(doc, first=40), first=1, last=(nchar(substring(doc, first=40))-17)),substring(substring(doc, first=40), first=1, last=(nchar(substring(doc, first=40))-16)))
   df[index,5] = ifelse(df[index,4] == df[index,2], 1, 0)
   count = count + 1
   index = index + 1
@@ -251,7 +258,23 @@ for(doc in file_list){
 #Calculate Accuracy
 Accuracy.Score = sum(df[[5]])/length(df[[5]])
 print(Accuracy.Score)</code></pre>
-<pre><code>## [1] 0.74</code></pre>
+<pre><code>## [1] 0.6228</code></pre>
+<pre class="r"><code>#Look at the tabulation and print which authors are very often mixed with another author.
+crosstabulate = xtabs(~Actual + Predict, data=df)
+cross.df = as.data.frame.matrix(crosstabulate)
+rownames = rownames(crosstabulate)
+colnames = rownames(crosstabulate)
+for(i in seq(1,50)){
+  if(colnames[[i]] != rownames[which(cross.df[[i]]==max(cross.df[[i]]))]){
+    print(paste0(rownames[which(cross.df[[i]]==max(cross.df[[i]]))],' is commonly mistaken for ',colnames[[i]]))
+  }
+}</code></pre>
+<pre><code>## [1] &quot;ToddNissen is commonly mistaken for DavidLawder&quot;
+## [1] &quot;DarrenSchuettler is commonly mistaken for HeatherScoffield&quot;
+## [1] &quot;ScottHillis is commonly mistaken for JaneMacartney&quot;
+## [1] &quot;JaneMacartney is commonly mistaken for ScottHillis&quot;
+## [1] &quot;PeterHumphrey is commonly mistaken for TanEeLyn&quot;
+## [1] &quot;DavidLawder is commonly mistaken for ToddNissen&quot;</code></pre>
 </div>
 
 
