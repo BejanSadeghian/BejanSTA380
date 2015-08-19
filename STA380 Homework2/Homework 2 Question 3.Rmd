@@ -1,0 +1,58 @@
+---
+title: "Homework 2 Question 3"
+author: "Bejan Sadeghian"
+date: "August 18, 2015"
+output: html_document
+---
+
+###Task
+
+Evaluate the grocery.txt dataset to find interesting item set discoveries.
+
+###My Method
+
+I used the read.transactions function to import the data as a basket. I remove duplicates in each basket if there are any (just incase). I then create the rules using the apriori function.
+
+My first set of rules uses the parameters support = 0.001, confidence=0.4, maxlen=10, and target='rules'. The reason why is because since I know there are ~10,000 transactions/baskets in the dataset, I want any itemset that appears at least 10 times to gather as much itemsets as possible and show any associated itemsets (RHS) that appear atleast 40% of the time. I set maxlen=10 to make large baskets which Ill change later.
+
+ - My result from this first set of parameters game me some interesting itemset relationships, things I would expect like...
+ 
+    - {ham, processed cheese} => {white bread} (have to make sandwiches with bread!) 
+    
+    - {baking powder, flour} => {sugar} (for bakers)
+    
+ - What is a concern, is that we seem to have a lot of items that are confidence = 1.0 That would be great because it's saying that the RHS itemset is always bought with the LHS itemset, however lift is not very high indicating that the RHS itemset is purchased pretty frequently regardless
+    
+    - For example, with confidence = 1.0 and lift = 5.0, we are saying that 20% of the time our RHS itemset is purchased in the total transaction set.
+ 
+Because of the high confidence I made some adjustments to my rule parameters, going to support = 0.001, confidence = 0.1, and maxlen = 2. I reduced the maxlen because I believe it was forcing some higher confidence numbers, and I adjusted my min confidence level accordingly.
+
+ - My result from this set of parameters gave me again some interesting itemsets, I can see that many meat purchases (beef, chicken, eggs) are purchased alongside a root vegetable and that yogurts are typically bought with a fruit or other dairy (which is to be expected).
+
+Finally, I found a pretty neat library called 'arulesViz' and plotted the top 20 lift items for my second rule parameter set. It shows some of what I mentioned in my last bullet point, yogurt items tend to be purchased with other dairy products or fruits and root vegetables tend to be purchased with meat items like beef, chicken, and eggs.
+
+
+
+```{R plot, fig.width = 10, fig.height = 9, warning=FALSE}
+library(arules)
+library(arulesViz)
+
+groceries = read.transactions('groceries.txt', format='basket', sep=',', rm.duplicates = TRUE)
+
+#Setup the rules
+#I chose support = 0.001 because since we have around 10,000 transactions, if an item is in approx. 10+ of the baskets I 
+#wanted to say that is an item worth looking at
+#I chose maxlen = 10 to see the impact of a large itemset
+#I chose confidence = 0.1 because I wanted the results that showed item sets were in atleast 10% of my LHS itemset
+grocery.rules = apriori(groceries, parameter=list(support=0.001, confidence=0.4, maxlen=10, target='rules'))
+
+inspect(head(sort(grocery.rules, by='lift'))) #I want to see what itemsets have a high frequency of being purchased with another itemset and primarily with that itemsets (in other words not purchased without the first itemset) 
+inspect(head(sort(subset(grocery.rules, subset=confidence == 1.0), by='lift'))) #Want to see what RHS itemsets are purchased every time with a LHS set
+
+grocery.rules = apriori(groceries, parameter=list(support=0.001, confidence=0.1, maxlen=2, target='rules')) # Because I was getting confidence of 1.0 I feel like that the maxlen rule is letting things get too general. In other words, the max rule is just too large and skewing my results
+inspect(head(sort(subset(grocery.rules, subset=support > 0.01 & confidence > 0.2), by='lift'),25)) #want to see what 10% of our itemsets involve and what other itemsets have a high frequency in these
+
+plot(head(sort(subset(grocery.rules, subset=support > 0.01 & confidence > 0.2), by='lift'),20),method="graph",interactive=FALSE)
+
+```
+
